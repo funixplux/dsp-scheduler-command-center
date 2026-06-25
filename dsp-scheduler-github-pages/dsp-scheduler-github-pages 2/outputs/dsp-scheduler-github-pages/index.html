@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSP Scheduler Command Center</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">DS</div>
+        <div>
+          <strong>DSP Scheduler</strong>
+          <span>Logistics Command</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="command">Command Center</button>
+        <button class="nav-item" data-view="schedule">Schedule</button>
+        <button class="nav-item" data-view="drivers">Drivers</button>
+        <button class="nav-item" data-view="routes">Routes</button>
+        <button class="nav-item" data-view="vehicles">Vehicles</button>
+        <button class="nav-item" data-view="certifications">Certifications</button>
+        <button class="nav-item" data-view="timeoff">Time Off</button>
+        <button class="nav-item" data-view="hiring">Hiring</button>
+      </nav>
+      <button class="collapse-button">Collapse</button>
+    </aside>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <label class="field compact">
+          <span>Week</span>
+          <select id="weekSelect">
+            <option>Jun 22 - Jun 28, 2026</option>
+            <option>Jun 29 - Jul 5, 2026</option>
+            <option>Jul 6 - Jul 12, 2026</option>
+          </select>
+        </label>
+        <label class="field compact percent">
+          <span>Buffer %</span>
+          <input id="bufferInput" type="number" min="0" max="50" value="10" />
+        </label>
+        <button id="runScheduler" class="primary">Run Auto-Scheduler</button>
+        <button id="exportSchedule" class="secondary">Export Schedule</button>
+        <button id="openImport" class="secondary">Import Cortex Data</button>
+        <span id="lastImportStatus" class="import-status">No imports this session</span>
+        <div class="topbar-spacer"></div>
+        <button class="ghost">Alerts <b id="alertCount">3</b></button>
+        <button class="ghost">Settings</button>
+        <div class="profile">EB</div>
+      </header>
+
+      <section class="workspace">
+        <aside class="filters">
+          <div class="filter-head">
+            <h2>Filters</h2>
+            <button id="clearFilters" class="link">Clear all</button>
+          </div>
+          <label class="field">
+            <span>Route Date Range</span>
+            <select>
+              <option>Jun 22 - Jun 28, 2026</option>
+              <option>Next 3 weeks</option>
+            </select>
+          </label>
+          <fieldset>
+            <legend>Route Type</legend>
+            <label><input type="checkbox" checked data-filter="allTypes" /> All Types</label>
+            <label><input type="checkbox" checked data-route-filter="stepVan" /> Step Van</label>
+            <label><input type="checkbox" checked data-route-filter="edv" /> EDV / Rivian</label>
+            <label><input type="checkbox" checked data-route-filter="nursery" /> Nursery Route</label>
+          </fieldset>
+          <fieldset>
+            <legend>Certifications</legend>
+            <label><input type="checkbox" checked data-cert-filter="stepVan" /> Step Van</label>
+            <label><input type="checkbox" checked data-cert-filter="edv" /> EDV / Rivian</label>
+            <label><input type="checkbox" checked data-cert-filter="nursery" /> Nursery</label>
+          </fieldset>
+          <fieldset>
+            <legend>Driver Status</legend>
+            <label><input type="radio" name="driverStatus" value="all" checked /> All Drivers</label>
+            <label><input type="radio" name="driverStatus" value="available" /> Available Only</label>
+            <label><input type="radio" name="driverStatus" value="excludeMaxed" /> Exclude Maxed Out</label>
+          </fieldset>
+          <label class="field">
+            <span>Station</span>
+            <select>
+              <option>All Stations</option>
+              <option>DUT2</option>
+              <option>DYY5</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Shift</span>
+            <select>
+              <option>All Shifts</option>
+              <option>AM Dispatch</option>
+              <option>Rescue / Sweep</option>
+            </select>
+          </label>
+          <button id="resetFilters" class="secondary wide">Reset Filters</button>
+        </aside>
+
+        <section class="board-area">
+          <div class="summary-strip">
+            <div>
+              <span>Week Summary</span>
+              <strong><b id="assignedTotal">0</b> / <b id="neededTotal">0</b></strong>
+              <small>Routes assigned</small>
+            </div>
+            <div>
+              <span>Open Routes</span>
+              <strong class="danger" id="openRoutes">0</strong>
+            </div>
+            <div>
+              <span>Coverage</span>
+              <strong class="success" id="coveragePercent">0%</strong>
+            </div>
+            <div>
+              <span>Driver Utilization</span>
+              <strong id="utilizationAvg">0 / 40 hrs</strong>
+            </div>
+            <button id="shortageBanner" class="warning-banner">Review open routes</button>
+          </div>
+
+          <div id="scheduleBoard" class="schedule-board"></div>
+        </section>
+
+        <aside class="inspector">
+          <div class="inspector-head">
+            <div>
+              <h2 id="selectedDayTitle">Wednesday, Jun 25</h2>
+              <span>Day Overview</span>
+            </div>
+            <button id="closeInspector" class="icon-button">x</button>
+          </div>
+
+          <div class="overview-grid">
+            <div><span>Routes Needed</span><strong id="dayNeeded">48</strong></div>
+            <div><span>Assigned</span><strong class="success" id="dayAssigned">45</strong></div>
+            <div><span>Open Routes</span><strong class="danger" id="dayOpen">3</strong></div>
+            <div><span>Coverage</span><strong class="danger" id="dayCoverage">93.8%</strong></div>
+            <div><span>Driver Utilization</span><strong id="dayUtilization">36.8 / 40 hrs</strong></div>
+          </div>
+
+          <div class="candidate-head">
+            <div>
+              <h3>Fill Open Routes</h3>
+              <span id="candidateCount">Candidates (0)</span>
+            </div>
+            <label class="field sort">
+              <span>Sort by</span>
+              <select id="sortCandidates">
+                <option value="remaining">Most Remaining Hours</option>
+                <option value="certs">Best Certification Match</option>
+                <option value="name">Name</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="candidateList" class="candidate-list"></div>
+          <div class="legend">
+            <span><b class="tag sv">SV</b> Step Van</span>
+            <span><b class="tag edv">EDV</b> EDV / Rivian</span>
+            <span><b class="tag nr">NR</b> Nursery</span>
+          </div>
+          <button id="assignSelected" class="primary wide">Assign Selected (0)</button>
+          <button id="refreshList" class="secondary wide">Refresh List</button>
+        </aside>
+      </section>
+
+      <section class="bottom-panels">
+        <div class="panel hiring-panel">
+          <div class="panel-title">
+            <h2>Hiring Forecast</h2>
+            <span>3-week outlook</span>
+          </div>
+          <div class="forecast-grid">
+            <div><span>Active Drivers</span><strong id="activeDrivers">90</strong></div>
+            <div><span>Target Headcount</span><strong id="targetHeadcount">107</strong></div>
+            <div><span>Hire Needed</span><strong class="danger" id="hireNeeded">22</strong></div>
+            <div><span>3-Week Coverage Gap</span><strong class="danger" id="coverageGap">147</strong></div>
+          </div>
+          <button class="secondary">View Hiring Plan</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <h2>Alerts & Warnings</h2>
+            <span id="alertSummary">Open routes need review</span>
+          </div>
+          <div id="alertsList" class="alerts-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <h2>Quick Actions</h2>
+            <span>Roster maintenance</span>
+          </div>
+          <button class="action-row" id="quickAddDriver">Add Driver</button>
+          <button class="action-row">Request Time Off</button>
+          <button class="action-row">Manage Certifications</button>
+          <button class="action-row" id="quickImport">Upload Cortex Export</button>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="importDialog" class="import-dialog">
+      <form method="dialog">
+        <div class="dialog-head">
+          <div>
+            <h2>Import Cortex / Associate Data</h2>
+            <p>Upload updated associates, new hires, time off, or route demand exports. The app recalculates immediately.</p>
+          </div>
+          <button class="icon-button">x</button>
+        </div>
+
+        <div class="import-grid">
+          <label class="upload-card">
+            <strong>Associate / Driver CSV</strong>
+            <span>Accepts Cortex AssociateData exports: Name and ID, TransporterID, Position, Qualifications, Status</span>
+            <input id="driverUpload" type="file" accept=".csv,text/csv" />
+          </label>
+          <label class="upload-card">
+            <strong>Route Demand CSV</strong>
+            <span>Columns: day, routes. Optional: step_van, edv, nursery</span>
+            <input id="demandUpload" type="file" accept=".csv,text/csv" />
+          </label>
+        </div>
+
+        <div class="import-preview">
+          <div class="preview-head">
+            <div>
+              <h3>Import Preview</h3>
+              <p id="previewSummary">Choose a Cortex export to preview it before applying changes.</p>
+            </div>
+            <span id="previewBadge" class="preview-badge idle">Waiting</span>
+          </div>
+          <div id="previewDetails" class="preview-details">
+            <span>Cortex AssociateData exports are accepted without renaming columns.</span>
+            <span>Accepted day values: sun, mon, tue, wed, thu, fri, sat.</span>
+            <span>Accepted yes/no values: yes, no, true, false, 1, 0.</span>
+          </div>
+          <div id="previewTable" class="preview-table"></div>
+        </div>
+
+        <div class="automation-box">
+          <h3>Automatic Cortex Updates</h3>
+          <p>
+            Safest path: export from Cortex and upload here, or connect an approved API/export folder.
+            Browser scraping can be explored only if you are authorized, signed in locally, and Cortex permits automation.
+            This app does not store passwords.
+          </p>
+          <label class="toggle-row">
+            <input id="autoRefreshToggle" type="checkbox" />
+            <span>Check for approved import updates multiple times per day</span>
+          </label>
+          <label class="field">
+            <span>Refresh interval</span>
+            <select id="refreshInterval">
+              <option value="4">Every 4 hours</option>
+              <option value="2">Every 2 hours</option>
+              <option value="1">Hourly</option>
+            </select>
+          </label>
+          <small id="automationStatus">Automation is off. Upload CSV files manually when Cortex changes.</small>
+        </div>
+
+        <div class="import-history">
+          <div class="preview-head">
+            <div>
+              <h3>Today’s Import History</h3>
+              <p>Tracks updates applied from Cortex exports during this browser session.</p>
+            </div>
+            <button id="clearSavedData" value="default" class="secondary">Reset Saved Data</button>
+          </div>
+          <div id="importHistoryList" class="history-list"></div>
+        </div>
+
+        <menu>
+          <button value="cancel" class="secondary">Close</button>
+          <button id="applyImport" value="default" class="secondary" disabled>Apply Preview</button>
+          <button id="downloadTemplate" value="default" class="primary">Download CSV Templates</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
